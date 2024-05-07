@@ -1,16 +1,16 @@
 import tkinter as tk
-import warnings
 from tkinter import ttk
+from tkinter import filedialog  
+import warnings
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from tkinter import filedialog  
 import pandas as pd  
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
 
 
 
@@ -61,7 +61,7 @@ def toggle_name():
     nameToggle = not nameToggle
     plot_graph()
 
-def toggle_spline():
+def toggle_randomForest():
     global randomForestToggle
     randomForestToggle = not randomForestToggle
     plot_graph()
@@ -86,7 +86,7 @@ def update_graph():
             descriptions.append(description)
             modality.append(class_mod)
             classtype.append(class_type)
-            ax.clear()
+            chart.clear()
             plot_graph()
     else:
         plot_graph()
@@ -152,7 +152,8 @@ def plot_graph():
                     del classtypeTemp[i]
         
         
-        ax.clear()
+        chart.clear()
+        # performs linear regressor
         if linearReg and len(gradesTemp) > 0:
             
             dates = np.array(yearsTemp)
@@ -169,68 +170,64 @@ def plot_graph():
             greatDate = dates[len(dates) - 1]
             next_years = np.array([greatDate  + 1, greatDate  + 2 , greatDate  + 3, greatDate+ 4, greatDate + 5]).reshape(-1, 1)
             predicted_grades = model.predict(next_years)
-            textValue = "Predicted Grades : RMSE = "+str(rmse)
+            textValue = "Best-Fit : RMSE = "+str(rmse)
             
             for i in range(len(predicted_grades)):
                 if predicted_grades[i] > 100:
                     predicted_grades[i] = 100
-            ax.scatter(next_years, predicted_grades, marker='o', s=100, label=textValue, color='red')
-            ax.scatter(yearsTemp, gradesTemp, marker='o', s=100, color='blue')
+            chart.scatter(next_years, predicted_grades, marker='o', s=100, label=textValue, color='red')
+            chart.scatter(yearsTemp, gradesTemp, marker='o', s=100, color='blue')
             for x, y, predicted_grades in zip(next_years, predicted_grades, predicted_grades):
-                ax.annotate(str(round(predicted_grades, 1)), (x, y), fontsize=12, ha='center', va='bottom')
+                chart.annotate(str(round(predicted_grades, 1)), (x, y), fontsize=12, ha='center', va='bottom')
             if len(yearsTemp) > 1:
                 classesBestFit = np.polyfit(yearsTemp, gradesTemp, 1)
                 bestFitLine = np.poly1d(classesBestFit)
-                ax.plot(yearsTemp, bestFitLine(yearsTemp), color='red', linestyle='--', label='Online Class Best Fit')
+                chart.plot(yearsTemp, bestFitLine(yearsTemp), color='red', linestyle='--')
                 
 
-            
+        # performs random forest regressor   
         if randomForestToggle:
             if OnlineClassFil and InPersonClassFil or appFil and theoryFil:
-                ax.scatter([], [], marker='o', s=100, label="Random Forest: Select only 1 modality and type field", color='orange')
+                chart.scatter([], [], marker='o', s=100, label="Random Forest: Select only 1 modality and type field", color='orange')
                 
             elif (OnlineClassFil or InPersonClassFil) and (appFil or theoryFil):      
                 X = list(zip(years, modality, classtype))
                 y = grades
 
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-                X_train = np.column_stack((years, modality, classtype))
-                y_train = grades
+                # Train the model
+                randomFRegressor = RandomForestRegressor(n_estimators=1000, random_state=42)
+                randomFRegressor.fit(X_train, y_train)
 
+                # Make predictions on the test set
+                predicted_grades = randomFRegressor.predict(X_test)
+                mae = mean_absolute_error(y_test, predicted_grades)
 
-                rf_regressor = RandomForestRegressor(n_estimators=15, random_state=42)
-                rf_regressor.fit(X_train, y_train)
-
-
-                future_years = np.array([max(years)+1, max(years)+2])  
+                future_years = np.array([max(years)+1,max(years)+2])  
                 
                 
                 mode = 0
                 type = 0
                 if appFil:
-                    mode = 1
-                if OnlineClassFil:
                     type = 1
-                next_years = np.array([[max(years) + 1, mode, type], [max(years) + 2, mode, type]])
-                
-                future_modality = np.array([mode, mode])  
-                future_classtype = np.array([type, type])  
+                if OnlineClassFil:
+                    mode = 1
+                predicted_grades = randomFRegressor.predict([[max(grades)+1, mode, type], [max(grades)+2, mode, type]])
 
-                X_test = np.column_stack((future_years, future_modality, future_classtype))
-                predicted_grades = rf_regressor.predict(X_test)
 
-                # Print predicted grades for the next 5 years
                 for i in range(len(predicted_grades)):
                     if predicted_grades[i] > 100:
                         predicted_grades[i] = 100
-                ax.scatter(future_years, predicted_grades, marker='o', s=100, label="Random Forest Prediction", color='orange')
+                textValue = "Random Forest: MAE ="+str(round(mae,2))        
+                chart.scatter(future_years, predicted_grades, marker='o', s=100, label=textValue, color='orange')
                 for x, y, predicted_grades in zip(future_years, predicted_grades, predicted_grades):
-                    ax.annotate(str(round(predicted_grades,1)), (x, y), fontsize=12, ha='center', va='bottom')
-
-        
+                    chart.annotate(str(round(predicted_grades,1)), (x, y), fontsize=12, ha='center', va='bottom')
+                    
+        # performs linear regression with features[]
         if multiRegress:
             if OnlineClassFil and InPersonClassFil or appFil and theoryFil:
-                ax.scatter([], [], marker='o', s=100, label="Multi-Regression: Select only 1 modality and type field", color='green')
+                chart.scatter([], [], marker='o', s=100, label="Multi-Regression: Select only 1 modality and type field", color='green')
                 
             elif (OnlineClassFil or InPersonClassFil) and (appFil or theoryFil):
                 data = pd.DataFrame({'grades': grades, 'year': years, 'modality': modality, 'classtype': classtype})
@@ -243,46 +240,44 @@ def plot_graph():
                 mode = 0
                 type = 0
                 if appFil:
-                    mode = 1
-                if OnlineClassFil:
                     type = 1
+                if OnlineClassFil:
+                    mode = 1
                 next_years = np.array([[max(years) + 1, mode, type], [max(years) + 2, mode, type], [max(years) + 3, mode, type], [max(years) + 4, mode, type], [max(years) + 5, mode, type]])
                 predictions = model.predict(next_years)
                 ypredicted = model.predict(X_test)
                 rmse = np.sqrt(mean_squared_error(y_test, ypredicted))
-                textValue = "Multi-Regression: RMSE = "+str(rmse)
+                textValue = "Multi-Regression: RMSE = "+str(round(rmse,2))
                 next_years1 = [max(years) + 1, max(years) + 2,max(years) + 3,max(years) + 4,max(years) + 5]
                 for i in range(len(predictions)):
                     if predictions[i] > 100:
                         predictions[i] = 100
-                ax.scatter(next_years1, predictions, marker='o', s=100, label=textValue, color='green')
+                chart.scatter(next_years1, predictions, marker='o', s=100, label=textValue, color='green')
                 for x, y, prediction in zip(next_years1, predictions, predictions):
-                    ax.annotate(str(round(prediction,1)), (x, y), fontsize=12, ha='center', va='bottom')
+                    chart.annotate(str(round(prediction,1)), (x, y), fontsize=12, ha='center', va='bottom')
                             
-            
-        ax.scatter(yearsTemp, gradesTemp, marker='o', s=100, label='Class Grade', color='blue')
+    # Redraw the gradeGraph  
+        chart.scatter(yearsTemp, gradesTemp, marker='o', s=100, label='Class Grade', color='blue')
 
         if nameToggle:
             for x, y, desc in zip(yearsTemp, gradesTemp, descriptionsTemp):
-                ax.annotate(desc, (x, y), fontsize=12, ha='center', va='bottom')
+                chart.annotate(desc, (x, y), fontsize=12, ha='center', va='bottom')
         else: 
-            for x, y, desc in zip(yearsTemp, gradesTemp, []):
-                ax.annotate(desc, (x, y), fontsize=12, ha='center', va='bottom')   
+            for x, y, desc in zip(yearsTemp, gradesTemp,[]):
+                chart.annotate(desc, (x, y), fontsize=12, ha='center', va='bottom')   
 
-        ax.set_title("Class Percentage Grades Over the Years")
-        ax.set_xlabel("Year")
-        ax.set_ylabel("Percentage Grade")
-        ax.grid(True)
-        ax.legend()
+        chart.set_title("Class Percentage Grades Over the Years")
+        chart.set_xlabel("Year")
+        chart.set_ylabel("Percentage Grade")
+        chart.grid(True)
+        chart.legend()
 
-        ax.set_xlim(2002, 2028)
-        ax.set_ylim(50, 105)
-        ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-
-        # Redraw the canvas
-        canvas.draw()
+        chart.set_xlim(2002, 2028)
+        chart.set_ylim(50, 105)
+        chart.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        gradeGraph.draw()
  
- 
+#clears current data 
 def import_data():
     global years 
     global grades 
@@ -295,7 +290,8 @@ def import_data():
     modality = []
     classtype = []
     import_data1()
-    
+
+# import the data    
 def import_data1():
     global imported  
     imported = True
@@ -318,7 +314,7 @@ def import_data1():
 
 # Create the main application window
 root = tk.Tk()
-root.title("Class Percentage Grades Tracker")
+root.title("Class Grade Visualization Tool")
 data_frame = ttk.Frame(root)
 data_frame.pack(padx=20, pady=20)
 
@@ -358,7 +354,7 @@ online_radio.grid(row=4, column=1, padx=5, pady=5)
 in_person_radio = ttk.Radiobutton(data_frame, text="Theory", variable=class_type_var1, value=0)
 in_person_radio.grid(row=4, column=2, padx=5, pady=5)
 
-# Create a button to add data and update the graph
+# Create a button to add data and import data
 add_button = ttk.Button(data_frame, text="Add Data", command=update_graph)
 add_button.grid(row=5, columnspan=2, padx=5, pady=10)
 
@@ -370,6 +366,7 @@ import_button.grid(row=7, columnspan=2, padx=5, pady=10)
 graph_frame = ttk.Frame(root)
 graph_frame.pack(padx=20, pady=20)
 
+# feature fiilters
 online_checkbox_var = tk.BooleanVar(value=OnlineClassFil)
 online_checkbox = ttk.Checkbutton(data_frame, text="Online", variable=online_checkbox_var, command=toggle_online_class)
 online_checkbox.grid(row=8, column=1, padx=5, pady=10)
@@ -378,44 +375,44 @@ inperson_checkbox_var = tk.BooleanVar(value=InPersonClassFil)
 inperson_checkbox = ttk.Checkbutton(data_frame, text="In-Person", variable=inperson_checkbox_var, command=toggle_inperson_class)
 inperson_checkbox.grid(row=8, column=2, padx=5, pady=10)
 
-inperson_checkbox_var = tk.BooleanVar(value=appFil)
-inperson_checkbox = ttk.Checkbutton(data_frame, text="Application", variable=inperson_checkbox_var, command=toggle_app)
-inperson_checkbox.grid(row=8, column=3, padx=5, pady=10)
+application_checkbox_var = tk.BooleanVar(value=appFil)
+application_checkbox = ttk.Checkbutton(data_frame, text="Application", variable=application_checkbox_var, command=toggle_app)
+application_checkbox.grid(row=8, column=3, padx=5, pady=10)
 
-inperson_checkbox_var = tk.BooleanVar(value=theoryFil)
-inperson_checkbox = ttk.Checkbutton(data_frame, text="Theory", variable=inperson_checkbox_var, command=toggle_theory)
-inperson_checkbox.grid(row=8, column=5, padx=5, pady=10)
+theory_checkbox_var = tk.BooleanVar(value=theoryFil)
+theory_checkbox = ttk.Checkbutton(data_frame, text="Theory", variable=theory_checkbox_var, command=toggle_theory)
+theory_checkbox.grid(row=8, column=5, padx=5, pady=10)
 
 
-inperson_checkbox_var = tk.BooleanVar(value=nameToggle)
-inperson_checkbox = ttk.Checkbutton(data_frame, text="Name / Grade", variable=inperson_checkbox_var, command=toggle_name)
-inperson_checkbox.grid(row=8, column=7, padx=5, pady=10)
+name_checkbox_var = tk.BooleanVar(value=nameToggle)
+name_checkbox = ttk.Checkbutton(data_frame, text="Name / Grade", variable=name_checkbox_var, command=toggle_name)
+name_checkbox.grid(row=8, column=7, padx=5, pady=10)
 
-# linear regress
+# predicitive models checkboxes 
 linearReg_var = tk.BooleanVar(value=linearReg)
 linearReg_checkbox = ttk.Checkbutton(data_frame, text="Best-Fit", variable=linearReg_var, command=toggle_regress)
 linearReg_checkbox.grid(row=9, column=1, padx=5, pady=10)
 
 
-spline_var = tk.BooleanVar(value=randomForestToggle)
-spline_checkbox = ttk.Checkbutton(data_frame, text="Random Forest", variable=spline_var, command=toggle_spline)
-spline_checkbox.grid(row=9, column=3, padx=5, pady=10)
+randomForest_checkbox_var = tk.BooleanVar(value=randomForestToggle)
+randomForest_checkbox = ttk.Checkbutton(data_frame, text="Random Forest", variable=randomForest_checkbox_var, command=toggle_randomForest)
+randomForest_checkbox.grid(row=9, column=3, padx=5, pady=10)
 
 multiReg_var = tk.BooleanVar(value=multiRegress)
 multiReg_checkbox = ttk.Checkbutton(data_frame, text="Multi-Regression", variable=multiReg_var, command=toggle_multiRegress)
 multiReg_checkbox.grid(row=9, column=2, padx=5, pady=10)
 
 # Create a new 2D scatter plot
-fig, ax = plt.subplots(figsize=(8, 6))
-ax.set_title("Class Percentage Grades Over the Years")
-ax.set_xlabel("Year")
-ax.set_ylabel("Percentage Grade")
-ax.grid(True)
-ax.set_xlim(2002, 2028)
-ax.set_ylim(50, 105)
-ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+fig, chart = plt.subplots(figsize=(8, 6))
+chart.set_title("Class Percentage Grades Over the Years")
+chart.set_xlabel("Year")
+chart.set_ylabel("Percentage Grade")
+chart.grid(True)
+chart.set_xlim(2002, 2028)
+chart.set_ylim(50, 105)
+chart.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
-canvas = FigureCanvasTkAgg(fig, master=graph_frame)
-canvas.get_tk_widget().pack()
-canvas.draw()
+gradeGraph = FigureCanvasTkAgg(fig, master=graph_frame)
+gradeGraph.get_tk_widget().pack()
+gradeGraph.draw()
 root.mainloop()
