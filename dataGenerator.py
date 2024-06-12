@@ -7,17 +7,17 @@ onlineDiff = False
 onlineDelta = 6
 
 inpersonDiff = True
-inpersonDelta = 4
+inpersonDelta = 8
 
 applicationDiff = False
 applicationDelta = 5  #value between -10 and 8
 
-theoryDiff = True
+theoryDiff = False
 theoryDelta = -10
 
 increasing = True
-factor = 0.1 # use value between -0.1 and 0.15
-factorshift = 0.05
+factor = -0.01 # use value between -0.1 and 0.15
+factorshift = -0.03
 
 
 
@@ -76,9 +76,9 @@ df = pd.DataFrame(columns=["year", "name", "description", "application", "modali
 scheduled_classes = {year: set() for year in range(2005, 2020)}
 
 # Generate the class schedule a range of years
-for year in range(2005, 2020):
+for year in range(2006, 2019):
     year_data = []
-    for _ in range(15):
+    for _ in range(20):
         # choose a class
         available_classes = [c for c in classes if c["name"] not in scheduled_classes[year]]
         if not available_classes:
@@ -86,7 +86,7 @@ for year in range(2005, 2020):
         class_data = random.choice(available_classes)
         modality = random.choice(["online", "in person"])
         application = class_data["application"]
-        grade = 80 
+        grade = 82 
         
         
 
@@ -121,4 +121,4 @@ for year in range(2005, 2020):
     df = pd.concat([df, pd.DataFrame(year_data)], ignore_index=True)
 
 # Save the excel
-df.to_excel("test.xlsx", index=False, sheet_name="testData")
+df.to_excel("onlineExample.xlsx", index=False, sheet_name="testData")

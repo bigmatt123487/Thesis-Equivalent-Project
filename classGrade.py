@@ -10,7 +10,6 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
-from sklearn.metrics import mean_absolute_error
 
 
 
@@ -178,7 +177,7 @@ def plot_graph():
             chart.scatter(next_years, predicted_grades, marker='o', s=100, label=textValue, color='red')
             chart.scatter(yearsTemp, gradesTemp, marker='o', s=100, color='blue')
             for x, y, predicted_grades in zip(next_years, predicted_grades, predicted_grades):
-                chart.annotate(str(round(predicted_grades, 1)), (x, y), fontsize=12, ha='center', va='bottom')
+                chart.annotate(str(round(predicted_grades, 1)), (x, y), fontsize=10, ha='center', va='bottom')
             if len(yearsTemp) > 1:
                 classesBestFit = np.polyfit(yearsTemp, gradesTemp, 1)
                 bestFitLine = np.poly1d(classesBestFit)
@@ -197,14 +196,15 @@ def plot_graph():
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
                 # Train the model
-                randomFRegressor = RandomForestRegressor(n_estimators=1000, random_state=42)
+                randomFRegressor = RandomForestRegressor(n_estimators=50, random_state=1)
                 randomFRegressor.fit(X_train, y_train)
 
                 # Make predictions on the test set
                 predicted_grades = randomFRegressor.predict(X_test)
-                mae = mean_absolute_error(y_test, predicted_grades)
+                
+                rmse = round(np.sqrt(mean_squared_error(y_test, predicted_grades)), 3)
 
-                future_years = np.array([max(years)+1,max(years)+2])  
+                future_years = np.array([max(years)+1])  
                 
                 
                 mode = 0
@@ -213,16 +213,16 @@ def plot_graph():
                     type = 1
                 if OnlineClassFil:
                     mode = 1
-                predicted_grades = randomFRegressor.predict([[max(grades)+1, mode, type], [max(grades)+2, mode, type]])
+                predicted_grades = randomFRegressor.predict([[max(grades)+1, mode, type]])
 
 
                 for i in range(len(predicted_grades)):
                     if predicted_grades[i] > 100:
                         predicted_grades[i] = 100
-                textValue = "Random Forest: MAE ="+str(round(mae,2))        
+                textValue = "Random Forest: MAE ="+str(round(rmse,2))        
                 chart.scatter(future_years, predicted_grades, marker='o', s=100, label=textValue, color='orange')
                 for x, y, predicted_grades in zip(future_years, predicted_grades, predicted_grades):
-                    chart.annotate(str(round(predicted_grades,1)), (x, y), fontsize=12, ha='center', va='bottom')
+                    chart.annotate(str(round(predicted_grades,1)), (x, y), fontsize=10, ha='center', va='bottom')
                     
         # performs linear regression with features[]
         if multiRegress:
@@ -254,17 +254,17 @@ def plot_graph():
                         predictions[i] = 100
                 chart.scatter(next_years1, predictions, marker='o', s=100, label=textValue, color='green')
                 for x, y, prediction in zip(next_years1, predictions, predictions):
-                    chart.annotate(str(round(prediction,1)), (x, y), fontsize=12, ha='center', va='bottom')
+                    chart.annotate(str(round(prediction,1)), (x, y), fontsize=10, ha='center', va='bottom')
                             
     # Redraw the gradeGraph  
         chart.scatter(yearsTemp, gradesTemp, marker='o', s=100, label='Class Grade', color='blue')
 
         if nameToggle:
             for x, y, desc in zip(yearsTemp, gradesTemp, descriptionsTemp):
-                chart.annotate(desc, (x, y), fontsize=12, ha='center', va='bottom')
+                chart.annotate(desc, (x, y), fontsize=10, ha='center', va='bottom')
         else: 
             for x, y, desc in zip(yearsTemp, gradesTemp,[]):
-                chart.annotate(desc, (x, y), fontsize=12, ha='center', va='bottom')   
+                chart.annotate(desc, (x, y), fontsize=10, ha='center', va='bottom')   
 
         chart.set_title("Class Percentage Grades Over the Years")
         chart.set_xlabel("Year")
@@ -272,7 +272,7 @@ def plot_graph():
         chart.grid(True)
         chart.legend()
 
-        chart.set_xlim(2002, 2028)
+        chart.set_xlim(min(years)-2, max(years)+7)
         chart.set_ylim(50, 105)
         chart.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
         gradeGraph.draw()
@@ -346,7 +346,7 @@ in_person_radio = ttk.Radiobutton(data_frame, text="In-Person", variable=class_t
 in_person_radio.grid(row=3, column=2, padx=5, pady=5)
 
 # Academic / Thoery Based
-ttk.Label(data_frame, text="Class Type:").grid(row=3, column=0, padx=5, pady=5)
+ttk.Label(data_frame, text="Class Type:").grid(row=4, column=0, padx=5, pady=5)
 class_type_var1 = tk.IntVar()
 class_type_var1.set(0)  
 online_radio = ttk.Radiobutton(data_frame, text="Application", variable=class_type_var1, value=1)
